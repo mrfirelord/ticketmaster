@@ -24,6 +24,10 @@ dependencies {
     // Configuration
     implementation("com.typesafe:config:1.4.3")
 
+    // logger
+    implementation("ch.qos.logback:logback-classic:1.4.14")
+    implementation("org.slf4j:slf4j-api:2.0.9")
+
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

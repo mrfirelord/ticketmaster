@@ -6,12 +6,15 @@ import org.example.ticketmaster.eventmanager.db.ElasticsearchSyncRepository
 import org.example.ticketmaster.eventmanager.model.CreateEventRequest
 import org.example.ticketmaster.eventmanager.model.CreateEventResponse
 import org.example.ticketmaster.eventmanager.model.EventElasticDocument
+import org.slf4j.LoggerFactory
 
 class EventService(
     private val eventRepository: EventRepository,
     private val elasticsearchRepository: ElasticsearchRepository,
     private val syncRepository: ElasticsearchSyncRepository
 ) {
+    private val logger = LoggerFactory.getLogger(EventService::class.java)
+
     fun createEvent(request: CreateEventRequest): CreateEventResponse {
         val eventDocument = request.toDocument()
         val savedDocument = eventRepository.save(eventDocument)
@@ -25,7 +28,7 @@ class EventService(
             syncRepository.markAsSearchable(savedDocument._id)
         } catch (e: Exception) {
             // Failure - leave as PENDING for external process
-            println("Warning: Failed to index in Elasticsearch: ${e.message}")
+            logger.error("Warning: Failed to index in Elasticsearch", e)
         }
 
         return CreateEventResponse.fromEventDocument(savedDocument)

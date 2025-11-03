@@ -10,8 +10,11 @@ import org.example.ticketmaster.eventmanager.model.Location
 import org.example.ticketmaster.eventmanager.model.PriceRange
 import org.example.ticketmaster.eventmanager.model.Venue
 import org.example.ticketmaster.eventmanager.service.EventService
+import org.slf4j.LoggerFactory
 
 object Main {
+    private val logger = LoggerFactory.getLogger(EventService::class.java)
+
     @JvmStatic
     fun main(args: Array<String>) {
         val config = AppConfig.load()
@@ -71,6 +74,6 @@ object Main {
         )
 
         val response = eventService.createEvent(sampleEvent)
-        println(response)
+        logger.info(response.toString())
     }
 }

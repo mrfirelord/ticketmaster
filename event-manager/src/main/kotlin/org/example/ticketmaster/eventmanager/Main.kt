@@ -4,11 +4,9 @@ import org.example.ticketmaster.eventmanager.config.AppConfig
 import org.example.ticketmaster.eventmanager.db.ElasticsearchSyncRepository
 import org.example.ticketmaster.eventmanager.db.EventRepository
 import org.example.ticketmaster.eventmanager.db.MongoConnection
+import org.example.ticketmaster.eventmanager.db.VenueRepository
 import org.example.ticketmaster.eventmanager.elastic.ElasticsearchRepository
-import org.example.ticketmaster.eventmanager.model.CreateEventRequest
-import org.example.ticketmaster.eventmanager.model.Location
-import org.example.ticketmaster.eventmanager.model.PriceRange
-import org.example.ticketmaster.eventmanager.model.Venue
+import org.example.ticketmaster.eventmanager.model.*
 import org.example.ticketmaster.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
 
@@ -25,6 +23,7 @@ object Main {
 
         val eventRepository = EventRepository(database)
         val syncRepository = ElasticsearchSyncRepository(database)
+        val venueRepository = VenueRepository(database)
 
         val elasticsearchRepository = ElasticsearchRepository(
             host = config.elasticsearch.host,
@@ -35,34 +34,46 @@ object Main {
             disableSslVerification = config.elasticsearch.disableSslVerification
         )
 
-        clearAll(eventRepository, elasticsearchRepository)
-
-        val eventService = EventService(eventRepository, elasticsearchRepository, syncRepository)
-        createSampleEvent(eventService)
-
-        elasticsearchRepository.close()
-    }
-
-    private fun clearAll(eventRepository: EventRepository, elasticsearchRepository: ElasticsearchRepository) {
         eventRepository.clearAll()
         elasticsearchRepository.clearAll()
+        venueRepository.clearAll()
+        syncRepository.clearAll()
+
+        // Create a sample venue first
+        val venueDocument = createSampleVenue(venueRepository)
+
+        val eventService = EventService(eventRepository, elasticsearchRepository, syncRepository, venueRepository)
+        createSampleEvent(eventService, venueDocument)
+
+        elasticsearchRepository.close()
+        mongoClient.close()
     }
 
-    private fun createSampleEvent(eventService: EventService) {
+    fun createSampleVenue(venueRepository: VenueRepository): VenueDocument {
+        val venue = VenueDocument(
+            name = "Madison Square Garden",
+            location = Location(
+                lat = 40.7505,
+                lon = -73.9934,
+                city = "New York",
+                state = "NY",
+                address = "4 Pennsylvania Plaza, New York, NY 10001"
+            ),
+            seatingType = SeatingType.GENERAL_ADMISSION,
+            capacity = 20000
+        )
+
+        val saved: VenueDocument = venueRepository.save(venue)
+        println("Venue created: ${saved._id} - ${saved.name}")
+        return saved
+    }
+
+    private fun createSampleEvent(eventService: EventService, venue: VenueDocument) {
         val sampleEvent = CreateEventRequest(
             name = "Taylor Swift - Eras Tour",
             artist = "Taylor Swift",
             description = "Experience the magic of Taylor Swift's record-breaking Eras Tour. A journey through her entire musical career with stunning visuals and performances.",
-            venue = Venue(
-                name = "Madison Square Garden",
-                location = Location(
-                    lat = 40.7505,
-                    lon = -73.9934,
-                    city = "New York",
-                    state = "NY",
-                    address = "4 Pennsylvania Plaza, New York, NY 10001"
-                )
-            ),
+            venueId = venue._id!!,
             dateTime = "2025-12-15T19:00:00Z",
             category = "Concert",
             priceRange = PriceRange(
@@ -70,7 +81,7 @@ object Main {
                 max = 499.00,
                 currency = "USD"
             ),
-            totalSeats = 20000
+            totalSeats = venue.capacity
         )
 
         val response = eventService.createEvent(sampleEvent)

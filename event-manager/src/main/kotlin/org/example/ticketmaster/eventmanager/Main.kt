@@ -1,20 +1,51 @@
 package org.example.ticketmaster.eventmanager
 
+import org.example.ticketmaster.eventmanager.config.AppConfig
+import org.example.ticketmaster.eventmanager.db.ElasticsearchSyncRepository
 import org.example.ticketmaster.eventmanager.db.EventRepository
 import org.example.ticketmaster.eventmanager.db.MongoConnection
+import org.example.ticketmaster.eventmanager.elastic.ElasticsearchRepository
 import org.example.ticketmaster.eventmanager.model.CreateEventRequest
 import org.example.ticketmaster.eventmanager.model.Location
 import org.example.ticketmaster.eventmanager.model.PriceRange
 import org.example.ticketmaster.eventmanager.model.Venue
+import org.example.ticketmaster.eventmanager.service.EventService
 
 object Main {
     @JvmStatic
     fun main(args: Array<String>) {
-        // Initialize
-        val mongoClient = MongoConnection.createClient()
-        val database = MongoConnection.getDatabase(mongoClient)
-        val eventRepository = EventRepository(database)
+        val config = AppConfig.load()
 
+        // Initialize
+        val mongoClient = MongoConnection.createClient(config.mongodb.connectionString)
+        val database = MongoConnection.getDatabase(mongoClient, config.mongodb.database)
+
+        val eventRepository = EventRepository(database)
+        val syncRepository = ElasticsearchSyncRepository(database)
+
+        val elasticsearchRepository = ElasticsearchRepository(
+            host = config.elasticsearch.host,
+            port = config.elasticsearch.port,
+            scheme = config.elasticsearch.scheme,
+            username = config.elasticsearch.username,
+            password = config.elasticsearch.password,
+            disableSslVerification = config.elasticsearch.disableSslVerification
+        )
+
+        clearAll(eventRepository, elasticsearchRepository)
+
+        val eventService = EventService(eventRepository, elasticsearchRepository, syncRepository)
+        createSampleEvent(eventService)
+
+        elasticsearchRepository.close()
+    }
+
+    private fun clearAll(eventRepository: EventRepository, elasticsearchRepository: ElasticsearchRepository) {
+        eventRepository.clearAll()
+        elasticsearchRepository.clearAll()
+    }
+
+    private fun createSampleEvent(eventService: EventService) {
         val sampleEvent = CreateEventRequest(
             name = "Taylor Swift - Eras Tour",
             artist = "Taylor Swift",
@@ -39,10 +70,7 @@ object Main {
             totalSeats = 20000
         )
 
-        val newEvent = sampleEvent.toDocument()
-//        val savedEvent = eventRepository.save(newEvent)
-
-        val event = eventRepository.findById("69079e832f75336d6b6fdbaf")
-        println(event)
+        val response = eventService.createEvent(sampleEvent)
+        println(response)
     }
 }

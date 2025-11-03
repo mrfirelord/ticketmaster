@@ -14,7 +14,16 @@ repositories {
 }
 
 dependencies {
+    // Mongo
     implementation("org.litote.kmongo:kmongo:5.2.0")
+
+    // Elasticsearch
+    implementation("co.elastic.clients:elasticsearch-java:8.15.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
+
+    // Configuration
+    implementation("com.typesafe:config:1.4.3")
+
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }

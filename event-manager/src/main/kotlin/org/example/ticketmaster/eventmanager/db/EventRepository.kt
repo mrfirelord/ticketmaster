@@ -33,4 +33,9 @@ class EventRepository(database: MongoDatabase) {
     fun existsById(id: String): Boolean {
         return collection.countDocuments(EventDocument::_id eq id) > 0
     }
+
+    fun clearAll(): Long {
+        val result = collection.deleteMany("{}")
+        return result.deletedCount
+    }
 }

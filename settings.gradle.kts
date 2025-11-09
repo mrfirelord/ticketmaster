@@ -11,3 +11,4 @@ plugins {
 
 rootProject.name = "ticketmaster"
 include("event-manager")
+include("booking-service")
